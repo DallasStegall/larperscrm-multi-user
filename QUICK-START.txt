@@ -1,0 +1,201 @@
+================================================================================
+  LARPERSCRM MULTI-USER — QUICK START (Today)
+================================================================================
+
+You are here: ✅ Project structure complete
+Next: 🔄 Deploy to the web
+
+Total time: ~30 minutes
+
+================================================================================
+STEP 1: CREATE A SUPABASE PROJECT (5 minutes)
+================================================================================
+
+1. Go to: https://supabase.com
+2. Click: "Start your project" or "Sign in"
+3. Click: "New Project" or "Create a new project"
+4. Fill in:
+   - Project Name: larperscrm (or your choice)
+   - Database Password: (create strong password)
+   - Region: (choose nearest to your agents)
+5. Click: "Create new project"
+6. Wait: ~2 minutes for provisioning
+
+Result: You have a Supabase project! ✓
+
+================================================================================
+STEP 2: GET YOUR CREDENTIALS (2 minutes)
+================================================================================
+
+In your Supabase project:
+
+1. Go to: Settings > API (left sidebar)
+2. Find:
+   - "Project URL" (looks like: https://xxxxx.supabase.co)
+   - "Anon Key" (long string starting with eyJ...)
+
+3. Copy both of these somewhere safe (notepad, etc.)
+
+Result: You have credentials! ✓
+
+================================================================================
+STEP 3: DEPLOY DATABASE SCHEMA (3 minutes)
+================================================================================
+
+In your Supabase project:
+
+1. Go to: SQL Editor (left sidebar)
+2. Click: "New Query" or "New SQL"
+3. Open file: larperscrm-schema.sql
+4. Copy: Entire contents
+5. Paste: Into Supabase SQL editor
+6. Click: "Run" (or Ctrl+Enter)
+
+Wait for: "Query executed successfully" message
+
+Result: Database is ready! ✓
+
+================================================================================
+STEP 4: UPDATE CODE WITH YOUR CREDENTIALS (2 minutes)
+================================================================================
+
+Open file: src/supabase-client.js
+
+Find these lines (around line 8-9):
+  const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+  const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+
+Replace with your actual credentials:
+  const SUPABASE_URL = 'https://xxxxx.supabase.co';        ← Your Project URL
+  const SUPABASE_ANON_KEY = 'eyJ...your...anon...key...'; ← Your Anon Key
+
+Save the file!
+
+Result: Code has credentials! ✓
+
+================================================================================
+STEP 5: LINK SCRIPTS TO HTML (1 minute)
+================================================================================
+
+Open file: larperscrm-dashboard.html
+
+Find: The <head> section (top of file, around line 1-10)
+
+Add these two lines before </head>:
+  <script src="src/supabase-client.js"></script>
+  <script src="src/auth-screens.js"></script>
+
+Save the file!
+
+Result: HTML is linked to auth system! ✓
+
+================================================================================
+STEP 6: TEST LOCALLY (5 minutes)
+================================================================================
+
+In your terminal:
+
+1. cd into larperscrm-multi-user/
+2. Run: python3 -m http.server 3000
+3. Open: http://localhost:3000/larperscrm-dashboard.html
+
+Expected: You see a LOGIN screen
+
+Test signup:
+1. Click: "Sign up"
+2. Enter: Full Name (John Doe)
+3. Enter: Email (test@example.com)
+4. Enter: Password (Test123456)
+5. Confirm: Password
+6. Click: "Sign up"
+
+Expected: Dashboard loads!
+
+Result: Auth works locally! ✓
+
+================================================================================
+STEP 7: DEPLOY TO THE WEB (10 minutes)
+================================================================================
+
+OPTION A: CLOUDFLARE PAGES (Recommended)
+  1. Push your code to GitHub
+  2. Go to: https://pages.cloudflare.com
+  3. Click: "Create a project"
+  4. Select: Your GitHub repo
+  5. Deploy!
+
+OPTION B: NETLIFY (Easiest)
+  1. Go to: https://netlify.com
+  2. Drag your project folder onto the page
+  3. Done!
+
+OPTION C: VERCEL
+  1. Push to GitHub
+  2. Go to: https://vercel.com
+  3. Import your repo
+  4. Deploy!
+
+Result: Your app is live! ✓
+
+================================================================================
+STEP 8: TEST LIVE DEPLOYMENT (3 minutes)
+================================================================================
+
+1. Open: Your live URL (e.g., https://larperscrm.pages.dev)
+2. You see: LOGIN screen
+3. Sign up: With a test email
+4. See: Dashboard
+5. Log out: And log back in
+
+Result: Everything works! ✓
+
+================================================================================
+WHAT HAPPENS NEXT?
+================================================================================
+
+When you complete the 8 steps above, tell me:
+
+"I've deployed the auth system to [your URL]. We're ready to migrate features."
+
+Then I will:
+1. Wire "My Policies" to live Supabase data
+2. Test multi-agent isolation
+3. Repeat for other features
+4. Deploy updated version
+
+Timeline: ~2-3 hours for all core features
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Q: "Login doesn't work"
+A: Check your credentials in src/supabase-client.js — must be exact
+
+Q: "Can't see login screen"
+A: Make sure scripts are linked in larperscrm-dashboard.html <head>
+
+Q: "CORS error in console"
+A: Supabase URL is likely wrong — copy-paste directly from Supabase settings
+
+Q: "Database error"
+A: Re-run the larperscrm-schema.sql in Supabase SQL Editor
+
+Q: Still stuck?
+A: Tell me the exact error and we'll debug in Code
+
+================================================================================
+FILES YOU'RE USING
+================================================================================
+
+larperscrm-multi-user/
+  ├── larperscrm-dashboard.html        ← You'll edit this
+  ├── larperscrm-schema.sql            ← Deploy as-is
+  └── src/
+      ├── supabase-client.js           ← You'll edit this (credentials)
+      └── auth-screens.js              ← Works out of the box
+
+================================================================================
+ESTIMATED TIME: 30 minutes total
+STATUS: You've got this! 🚀
+================================================================================
