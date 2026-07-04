@@ -15,8 +15,8 @@
 // 
 // Do NOT commit these to version control. Use environment variables in production.
 
-const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';
+const SUPABASE_URL = 'https://eristkfqgiaojcyqznom.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVyaXN0a2ZxZ2lhb2pjeXF6bm9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjgwNjcsImV4cCI6MjA5ODcwNDA2N30.4r9eh2SV7hjiughJBklHQycjL3zoYKyLChLWGYetq9Y';
 
 // ============================================================================
 // SUPABASE CLIENT
