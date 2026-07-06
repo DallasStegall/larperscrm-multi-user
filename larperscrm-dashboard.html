@@ -541,6 +541,63 @@ body {
   .modal-select:focus { outline: none; border-color: var(--primary); }
   select.modal-select { appearance: none; cursor: pointer; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b8fa8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; background-size: 14px; padding-right: 32px; }
 
+  .policies-table { width: 100%; border-collapse: collapse; }
+  .policies-table th {
+    text-align: left; padding: 12px 22px; font-size: 11.5px; font-weight: 600;
+    color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  .policies-table td {
+    padding: 14px 22px; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border);
+  }
+  .policies-table tbody tr:last-child td { border-bottom: none; }
+  .policies-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .policy-status-badge {
+    display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 100px;
+    font-size: 11.5px; font-weight: 700; text-transform: capitalize;
+  }
+  .policy-status-active { background: hsl(142, 71%, 45%, 0.12); color: var(--success); }
+  .policy-status-pending { background: hsl(38, 92%, 50%, 0.12); color: var(--warning); }
+  .policy-status-lapsed, .policy-status-cancelled { background: hsl(0, 84%, 60%, 0.12); color: hsl(0, 84%, 65%); }
+  .policy-row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .policy-row-btn {
+    width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border2);
+    background: transparent; color: var(--text2); display: flex; align-items: center;
+    justify-content: center; cursor: pointer; transition: all 0.12s;
+  }
+  .policy-row-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+  .policy-row-btn svg { width: 14px; height: 14px; }
+
+  /* ── SHARED: generic data table / badge / row-action styles used by
+     Leads, Calendar, Face-to-Face, Carrier Appointments, Integrations ── */
+  .data-table { width: 100%; border-collapse: collapse; }
+  .data-table th {
+    text-align: left; padding: 12px 22px; font-size: 11.5px; font-weight: 600;
+    color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+  .data-table td {
+    padding: 14px 22px; font-size: 13px; color: var(--text); border-bottom: 1px solid var(--border);
+  }
+  .data-table tbody tr:last-child td { border-bottom: none; }
+  .data-table tbody tr:hover td { background: rgba(255,255,255,0.02); }
+  .status-badge {
+    display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 100px;
+    font-size: 11.5px; font-weight: 700; text-transform: capitalize;
+  }
+  .status-badge-success { background: hsl(142, 71%, 45%, 0.12); color: var(--success); }
+  .status-badge-warning { background: hsl(38, 92%, 50%, 0.12); color: var(--warning); }
+  .status-badge-danger { background: hsl(0, 84%, 60%, 0.12); color: hsl(0, 84%, 65%); }
+  .status-badge-neutral { background: rgba(255,255,255,0.06); color: var(--text2); }
+  .row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .row-action-btn {
+    width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--border2);
+    background: transparent; color: var(--text2); display: flex; align-items: center;
+    justify-content: center; cursor: pointer; transition: all 0.12s;
+  }
+  .row-action-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+  .row-action-btn svg { width: 14px; height: 14px; }
+
   .btn-generate-link {
     width: 100%;
     display: flex;
@@ -1069,6 +1126,12 @@ body {
 </style>
 <script src="supabase-client.js"></script>
 <script src="auth-screens.js"></script>
+<script src="policies.js"></script>
+<script src="leads.js"></script>
+<script src="calendar.js"></script>
+<script src="f2f.js"></script>
+<script src="carrier-appointments.js"></script>
+<script src="integrations.js"></script>
 </head>
 <body>
 
@@ -1584,13 +1647,26 @@ body {
             <p class="page-sub">Manage and follow up with your assigned leads.</p>
           </div>
           <div class="header-actions">
-            <button class="btn-outline">
+            <button class="btn-outline" id="addLeadBtn">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
               Add Lead
             </button>
           </div>
         </div>
-        <div class="map-card">
+        <div id="leadsLoading" class="map-card">
+          <div class="map-card-head">
+            <div class="map-card-title-row">
+              <div class="map-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              </div>
+              <div>
+                <div class="map-title">Loading leads...</div>
+                <div class="map-sub">Fetching your data from Supabase</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="leadsEmpty" class="map-card" style="display:none">
           <div class="map-card-head">
             <div class="map-card-title-row">
               <div class="map-icon">
@@ -1603,8 +1679,67 @@ body {
             </div>
           </div>
           <div class="map-body" style="text-align:center; padding:48px 22px;">
-            <p style="color:var(--text2); font-size:13px;">Visit the Lead Marketplace to purchase your first batch of leads.</p>
+            <p style="color:var(--text2); font-size:13px;">Add a lead manually, or visit the Lead Marketplace to purchase your first batch of leads.</p>
           </div>
+        </div>
+        <div id="leadsTableWrap" class="map-card" style="display:none">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Stage</th>
+                <th>Source</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="leadsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ADD / EDIT LEAD MODAL -->
+      <div id="leadModalOverlay" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+          <div class="modal-head">
+            <div class="modal-title" id="leadModalTitle">Add Lead</div>
+            <button class="modal-close" id="closeLeadModal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+          </div>
+          <div id="leadModalError" class="auth-error" style="margin-bottom:14px;"></div>
+          <form id="leadForm">
+            <input type="hidden" id="leadId" value="">
+            <div class="modal-form-grid">
+              <div>
+                <label class="modal-label">Name *</label>
+                <input type="text" class="modal-select" id="leadName" placeholder="e.g. John Smith" required>
+              </div>
+              <div>
+                <label class="modal-label">Phone</label>
+                <input type="text" class="modal-select" id="leadPhone" placeholder="+1 (555) 123-4567">
+              </div>
+              <div>
+                <label class="modal-label">Email</label>
+                <input type="email" class="modal-select" id="leadEmail" placeholder="client@email.com">
+              </div>
+              <div>
+                <label class="modal-label">Stage</label>
+                <select class="modal-select" id="leadStage">
+                  <option value="new">New</option>
+                  <option value="contacted">Contacted</option>
+                  <option value="appointment_set">Appointment Set</option>
+                  <option value="sold">Sold</option>
+                  <option value="not_interested">Not Interested</option>
+                  <option value="dnc">Do Not Call</option>
+                </select>
+              </div>
+              <div>
+                <label class="modal-label">Source</label>
+                <input type="text" class="modal-select" id="leadSource" placeholder="e.g. Facebook, Referral">
+              </div>
+            </div>
+            <button type="submit" class="btn-generate-link" id="leadSubmitBtn">Save Lead</button>
+          </form>
         </div>
       </div>
 
@@ -1905,14 +2040,75 @@ body {
             <h1 class="greeting">My <span class="name-grad">Calendar</span></h1>
             <p class="page-sub">Appointments, follow-ups, and reminders.</p>
           </div>
+          <div class="header-actions">
+            <button class="btn-outline" id="addAppointmentBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              Add Appointment
+            </button>
+          </div>
         </div>
-        <div class="map-card">
+        <div id="apptsLoading" class="map-card">
           <div class="map-card-head">
             <div class="map-card-title-row">
               <div class="map-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></div>
-              <div><div class="map-title">No events scheduled</div><div class="map-sub">Tuesday, June 16, 2026</div></div>
+              <div><div class="map-title">Loading appointments...</div><div class="map-sub">Fetching your data from Supabase</div></div>
             </div>
           </div>
+        </div>
+        <div id="apptsEmpty" class="map-card" style="display:none">
+          <div class="map-card-head">
+            <div class="map-card-title-row">
+              <div class="map-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></div>
+              <div><div class="map-title">No events scheduled</div><div class="map-sub">Appointments you add will show up here</div></div>
+            </div>
+          </div>
+        </div>
+        <div id="apptsTableWrap" class="map-card" style="display:none">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Notes</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="apptsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ADD / EDIT APPOINTMENT MODAL -->
+      <div id="apptModalOverlay" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+          <div class="modal-head">
+            <div class="modal-title" id="apptModalTitle">Add Appointment</div>
+            <button class="modal-close" id="closeApptModal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+          </div>
+          <div id="apptModalError" class="auth-error" style="margin-bottom:14px;"></div>
+          <form id="apptForm">
+            <input type="hidden" id="apptId" value="">
+            <div class="modal-form-grid">
+              <div style="grid-column:1/-1;">
+                <label class="modal-label">Title *</label>
+                <input type="text" class="modal-select" id="apptTitle" placeholder="e.g. Follow-up call with John Smith" required>
+              </div>
+              <div>
+                <label class="modal-label">Date *</label>
+                <input type="date" class="modal-select" id="apptDate" required>
+              </div>
+              <div>
+                <label class="modal-label">Time</label>
+                <input type="time" class="modal-select" id="apptTime">
+              </div>
+              <div style="grid-column:1/-1;">
+                <label class="modal-label">Notes</label>
+                <textarea class="modal-select" id="apptNotes" rows="3" style="resize:vertical;" placeholder="Optional notes..."></textarea>
+              </div>
+            </div>
+            <button type="submit" class="btn-generate-link" id="apptSubmitBtn">Save Appointment</button>
+          </form>
         </div>
       </div>
 
@@ -2329,20 +2525,78 @@ body {
             <h1 class="greeting">Face to <span class="name-grad">Face</span></h1>
             <p class="page-sub">Video meetings with leads and clients.</p>
           </div>
+          <div class="header-actions">
+            <button class="btn-outline" id="startInstantMeetingBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+              Start Instant Meeting
+            </button>
+            <button class="btn-outline" id="scheduleSessionBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              Schedule Session
+            </button>
+          </div>
         </div>
-        <div class="map-card">
+        <div id="f2fLoading" class="map-card">
+          <div class="map-card-head">
+            <div class="map-card-title-row">
+              <div class="map-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="14" height="12" rx="2"/></svg></div>
+              <div><div class="map-title">Loading sessions...</div><div class="map-sub">Fetching your data from Supabase</div></div>
+            </div>
+          </div>
+        </div>
+        <div id="f2fEmpty" class="map-card" style="display:none">
           <div class="map-card-head">
             <div class="map-card-title-row">
               <div class="map-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="14" height="12" rx="2"/></svg></div>
               <div><div class="map-title">No meetings scheduled</div><div class="map-sub">Start an instant call or schedule one for later</div></div>
             </div>
           </div>
-          <div class="map-body" style="text-align:center; padding:48px 22px;">
-            <button class="btn-outline" style="margin:0 auto;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
-              Start Instant Meeting
-            </button>
+        </div>
+        <div id="f2fTableWrap" class="map-card" style="display:none">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Method</th>
+                <th>Contact</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="f2fTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- SCHEDULE F2F SESSION MODAL -->
+      <div id="f2fModalOverlay" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+          <div class="modal-head">
+            <div class="modal-title">Schedule Session</div>
+            <button class="modal-close" id="closeF2fModal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
           </div>
+          <p class="modal-desc">Create a client session record. Sending the actual invite link isn't wired up yet — this saves the session so you can track it here.</p>
+          <div id="f2fModalError" class="auth-error" style="margin-bottom:14px;"></div>
+          <form id="f2fForm">
+            <div class="modal-form-grid">
+              <div>
+                <label class="modal-label">Client Name *</label>
+                <input type="text" class="modal-select" id="f2fClientName" placeholder="e.g. John Smith" required>
+              </div>
+              <div>
+                <label class="modal-label">Method</label>
+                <select class="modal-select" id="f2fMethod">
+                  <option value="email">Email</option>
+                  <option value="sms">SMS</option>
+                </select>
+              </div>
+              <div style="grid-column:1/-1;">
+                <label class="modal-label">Contact (email or phone) *</label>
+                <input type="text" class="modal-select" id="f2fContact" placeholder="client@email.com or +1 (555) 123-4567" required>
+              </div>
+            </div>
+            <button type="submit" class="btn-generate-link" id="f2fSubmitBtn">Save Session</button>
+          </form>
         </div>
       </div>
 
@@ -2366,6 +2620,7 @@ body {
         <div class="carrier-tabs">
           <button class="carrier-tab active" id="tabAllCarriers" data-tab="all">All Carriers (A–Z)</button>
           <button class="carrier-tab" id="tabCategories" data-tab="categories">Categories</button>
+          <button class="carrier-tab" id="tabMyAppointments" data-tab="mine">My Appointments</button>
         </div>
 
         <!-- ALL CARRIERS (A-Z) VIEW -->
@@ -2377,6 +2632,97 @@ body {
         <!-- CATEGORIES VIEW -->
         <div id="carriersCategoriesView" style="display:none;">
           <div id="categoryList"><!-- populated by JS --></div>
+        </div>
+
+        <!-- MY APPOINTMENTS VIEW -->
+        <div id="carriersMineView" style="display:none;">
+          <div style="display:flex; justify-content:flex-end; margin-bottom:14px;">
+            <button class="btn-outline" id="addAppointmentBtnCarrier">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              Add Appointment
+            </button>
+          </div>
+          <div id="carrierApptLoading" class="map-card">
+            <div class="map-card-head">
+              <div class="map-card-title-row">
+                <div class="map-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/></svg></div>
+                <div><div class="map-title">Loading appointments...</div><div class="map-sub">Fetching your data from Supabase</div></div>
+              </div>
+            </div>
+          </div>
+          <div id="carrierApptEmpty" class="map-card" style="display:none">
+            <div class="map-card-head">
+              <div class="map-card-title-row">
+                <div class="map-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/></svg></div>
+                <div><div class="map-title">No carrier appointments yet</div><div class="map-sub">Carriers you're appointed with will show up here</div></div>
+              </div>
+            </div>
+          </div>
+          <div id="carrierApptTableWrap" class="map-card" style="display:none">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Carrier</th>
+                  <th>Status</th>
+                  <th>Comp</th>
+                  <th>Upline</th>
+                  <th>Writing #</th>
+                  <th>IMO</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="carrierApptTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ADD / EDIT CARRIER APPOINTMENT MODAL -->
+      <div id="carrierApptModalOverlay" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+          <div class="modal-head">
+            <div class="modal-title" id="carrierApptModalTitle">Add Appointment</div>
+            <button class="modal-close" id="closeCarrierApptModal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+          </div>
+          <div id="carrierApptModalError" class="auth-error" style="margin-bottom:14px;"></div>
+          <form id="carrierApptForm">
+            <input type="hidden" id="carrierApptId" value="">
+            <div class="modal-form-grid">
+              <div>
+                <label class="modal-label">Carrier Name *</label>
+                <input type="text" class="modal-select" id="carrierApptName" placeholder="e.g. Mutual of Omaha" required>
+              </div>
+              <div>
+                <label class="modal-label">Status</label>
+                <select class="modal-select" id="carrierApptStatus">
+                  <option value="active">Active</option>
+                  <option value="pending">Pending</option>
+                  <option value="terminated">Terminated</option>
+                </select>
+              </div>
+              <div>
+                <label class="modal-label">Comp</label>
+                <input type="text" class="modal-select" id="carrierApptComp" placeholder="e.g. 110%">
+              </div>
+              <div>
+                <label class="modal-label">Upline</label>
+                <input type="text" class="modal-select" id="carrierApptUpline" placeholder="e.g. Jane Doe">
+              </div>
+              <div>
+                <label class="modal-label">Writing Number</label>
+                <input type="text" class="modal-select" id="carrierApptWritingNumber" placeholder="e.g. W-12345">
+              </div>
+              <div>
+                <label class="modal-label">IMO</label>
+                <input type="text" class="modal-select" id="carrierApptImo" placeholder="e.g. Larpers IMO">
+              </div>
+              <div style="grid-column:1/-1;">
+                <label class="modal-label">Note</label>
+                <textarea class="modal-select" id="carrierApptNote" rows="3" style="resize:vertical;" placeholder="Optional notes..."></textarea>
+              </div>
+            </div>
+            <button type="submit" class="btn-generate-link" id="carrierApptSubmitBtn">Save Appointment</button>
+          </form>
         </div>
       </div>
 
@@ -2892,14 +3238,99 @@ body {
             <h1 class="greeting">My <span class="name-grad">Policies</span></h1>
             <p class="page-sub">Track policies you've written and their current status.</p>
           </div>
+          <div class="header-actions">
+            <button class="btn-outline" id="addPolicyBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              Add Policy
+            </button>
+          </div>
         </div>
-        <div class="map-card">
+        <div id="policiesLoading" class="map-card">
+          <div class="map-card-head">
+            <div class="map-card-title-row">
+              <div class="map-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg></div>
+              <div><div class="map-title">Loading policies...</div><div class="map-sub">Fetching your data from Supabase</div></div>
+            </div>
+          </div>
+        </div>
+        <div id="policiesEmpty" class="map-card" style="display:none">
           <div class="map-card-head">
             <div class="map-card-title-row">
               <div class="map-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="m9 15 2 2 4-4"/></svg></div>
               <div><div class="map-title">No policies yet</div><div class="map-sub">Policies you write will show up here</div></div>
             </div>
           </div>
+        </div>
+        <div id="policiesTableWrap" class="map-card" style="display:none">
+          <table class="policies-table">
+            <thead>
+              <tr>
+                <th>Carrier</th>
+                <th>Product</th>
+                <th>Status</th>
+                <th>Policy #</th>
+                <th>Monthly Premium</th>
+                <th>Face Amount</th>
+                <th>Sale Date</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="policiesTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ADD / EDIT POLICY MODAL -->
+      <div id="policyModalOverlay" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+          <div class="modal-head">
+            <div class="modal-title" id="policyModalTitle">Add Policy</div>
+            <button class="modal-close" id="closePolicyModal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+          </div>
+          <div id="policyModalError" class="auth-error" style="margin-bottom:14px;"></div>
+          <form id="policyForm">
+            <input type="hidden" id="policyId" value="">
+            <div class="modal-form-grid">
+              <div>
+                <label class="modal-label">Carrier *</label>
+                <input type="text" class="modal-select" id="policyCarrier" placeholder="e.g. Mutual of Omaha" required>
+              </div>
+              <div>
+                <label class="modal-label">Product</label>
+                <input type="text" class="modal-select" id="policyProduct" placeholder="e.g. Final Expense">
+              </div>
+              <div>
+                <label class="modal-label">Status</label>
+                <select class="modal-select" id="policyStatus">
+                  <option value="pending">Pending</option>
+                  <option value="active">Active</option>
+                  <option value="lapsed">Lapsed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              <div>
+                <label class="modal-label">Policy Number</label>
+                <input type="text" class="modal-select" id="policyNumber" placeholder="e.g. FE-10293">
+              </div>
+              <div>
+                <label class="modal-label">Monthly Premium ($)</label>
+                <input type="number" step="0.01" min="0" class="modal-select" id="policyMonthlyPremium" placeholder="0.00">
+              </div>
+              <div>
+                <label class="modal-label">Face Amount ($)</label>
+                <input type="number" step="0.01" min="0" class="modal-select" id="policyFaceAmount" placeholder="0.00">
+              </div>
+              <div>
+                <label class="modal-label">Sale Date</label>
+                <input type="date" class="modal-select" id="policySaleDate">
+              </div>
+              <div>
+                <label class="modal-label">Effective Date</label>
+                <input type="date" class="modal-select" id="policyEffectiveDate">
+              </div>
+            </div>
+            <button type="submit" class="btn-generate-link" id="policySubmitBtn">Save Policy</button>
+          </form>
         </div>
       </div>
 
@@ -2986,16 +3417,67 @@ body {
         <div class="page-header">
           <div>
             <h1 class="greeting"><span class="name-grad">Integrations</span></h1>
-            <p class="page-sub">Connect LarpersCRM to the other tools you use.</p>
+            <p class="page-sub">Manage webhook tokens for connecting outside lead sources to LarpersCRM.</p>
+          </div>
+          <div class="header-actions">
+            <button class="btn-outline" id="addIntegrationBtn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+              New Integration
+            </button>
           </div>
         </div>
-        <div class="map-card">
+        <p class="modal-desc" style="margin-bottom:18px;">
+          Note: this creates and stores a webhook token, but LarpersCRM doesn't yet have a live endpoint to receive
+          inbound leads with it. Set these up now and delivery can be wired up later.
+        </p>
+        <div id="integrationsLoading" class="map-card">
           <div class="map-card-head">
             <div class="map-card-title-row">
               <div class="map-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 2v6"/><path d="M15 2v6"/><path d="M12 17v5"/><path d="M5 8h14l-1.4 8.4a2 2 0 0 1-2 1.6H8.4a2 2 0 0 1-2-1.6L5 8Z"/></svg></div>
-              <div><div class="map-title">No integrations connected</div><div class="map-sub">Connect email, calendar, and other tools</div></div>
+              <div><div class="map-title">Loading integrations...</div><div class="map-sub">Fetching your data from Supabase</div></div>
             </div>
           </div>
+        </div>
+        <div id="integrationsEmpty" class="map-card" style="display:none">
+          <div class="map-card-head">
+            <div class="map-card-title-row">
+              <div class="map-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 2v6"/><path d="M15 2v6"/><path d="M12 17v5"/><path d="M5 8h14l-1.4 8.4a2 2 0 0 1-2 1.6H8.4a2 2 0 0 1-2-1.6L5 8Z"/></svg></div>
+              <div><div class="map-title">No integrations connected</div><div class="map-sub">Create a token to reserve a spot for a future lead source</div></div>
+            </div>
+          </div>
+        </div>
+        <div id="integrationsTableWrap" class="map-card" style="display:none">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Webhook Token</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="integrationsTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- NEW INTEGRATION MODAL -->
+      <div id="integrationModalOverlay" class="modal-overlay" style="display:none;">
+        <div class="modal-box">
+          <div class="modal-head">
+            <div class="modal-title">New Integration</div>
+            <button class="modal-close" id="closeIntegrationModal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
+          </div>
+          <div id="integrationModalError" class="auth-error" style="margin-bottom:14px;"></div>
+          <form id="integrationForm">
+            <div class="modal-form-grid">
+              <div style="grid-column:1/-1;">
+                <label class="modal-label">Integration Name *</label>
+                <input type="text" class="modal-select" id="integrationName" placeholder="e.g. Facebook Lead Ads" required>
+              </div>
+            </div>
+            <button type="submit" class="btn-generate-link" id="integrationSubmitBtn">Generate Token</button>
+          </form>
         </div>
       </div>
 
@@ -4140,24 +4622,33 @@ navItems.forEach(item => {
   // Tab switching
   const tabAll = document.getElementById('tabAllCarriers');
   const tabCategories = document.getElementById('tabCategories');
+  const tabMine = document.getElementById('tabMyAppointments');
   const allView = document.getElementById('carriersAllView');
   const categoriesView = document.getElementById('carriersCategoriesView');
+  const mineView = document.getElementById('carriersMineView');
+
+  function setActiveCarrierTab(tab) {
+    [tabAll, tabCategories, tabMine].forEach(t => t.classList.remove('active'));
+    [allView, categoriesView, mineView].forEach(v => v.style.display = 'none');
+    tab.classList.add('active');
+  }
 
   tabAll.addEventListener('click', () => {
-    tabAll.classList.add('active');
-    tabCategories.classList.remove('active');
+    setActiveCarrierTab(tabAll);
     allView.style.display = '';
-    categoriesView.style.display = 'none';
   });
   tabCategories.addEventListener('click', () => {
-    tabCategories.classList.add('active');
-    tabAll.classList.remove('active');
+    setActiveCarrierTab(tabCategories);
     categoriesView.style.display = '';
-    allView.style.display = 'none';
     if (!categoriesView.dataset.rendered) {
       renderCategories();
       categoriesView.dataset.rendered = 'true';
     }
+  });
+  tabMine.addEventListener('click', () => {
+    setActiveCarrierTab(tabMine);
+    mineView.style.display = '';
+    if (typeof loadCarrierAppointments === 'function') loadCarrierAppointments();
   });
 
   // Search
