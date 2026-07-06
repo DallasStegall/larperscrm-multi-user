@@ -1,6 +1,6 @@
 /**
- * LarpersCRM Supabase Client
- * 
+ * LarpersCRM Supabase Client (v2 - improved error handling)
+ *
  * Initializes the Supabase client and provides helper functions for:
  * - Authentication (signup, login, logout)
  * - Session management
@@ -10,13 +10,53 @@
 // ============================================================================
 // CONFIGURATION
 // ============================================================================
-// IMPORTANT: Replace these with your Supabase project credentials.
-// You can find them in your Supabase project settings > API.
-// 
-// Do NOT commit these to version control. Use environment variables in production.
+// Your Supabase project credentials.
+// Find them in your Supabase project: Settings > API.
 
 const SUPABASE_URL = 'https://eristkfqgiaojcyqznom.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVyaXN0a2ZxZ2lhb2pjeXF6bm9tIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODMxMjgwNjcsImV4cCI6MjA5ODcwNDA2N30.4r9eh2SV7hjiughJBklHQycjL3zoYKyLChLWGYetq9Y';
+
+// ============================================================================
+// ERROR MESSAGE HELPER
+// ============================================================================
+// Supabase returns errors in several different shapes depending on the
+// endpoint. This digs out the most useful human-readable message and, when
+// possible, rewrites it into plain English for common cases.
+function extractErrorMessage(data, fallback) {
+  if (!data) return fallback;
+
+  // Supabase auth can use any of these fields
+  const raw =
+    data.error_description ||
+    data.msg ||
+    data.message ||
+    data.error ||
+    data.error_code ||
+    fallback;
+
+  const lower = String(raw).toLowerCase();
+
+  // Friendly rewrites for the errors agents will actually hit
+  if (lower.includes('email not confirmed') || lower.includes('email_not_confirmed')) {
+    return 'Your email needs to be confirmed before you can log in. ' +
+           'Check your inbox for a confirmation link — or ask your admin to ' +
+           'turn off email confirmation in Supabase.';
+  }
+  if (lower.includes('invalid login credentials') || lower.includes('invalid_credentials')) {
+    return 'Incorrect email or password. Please try again.';
+  }
+  if (lower.includes('user already registered') || lower.includes('already been registered')) {
+    return 'An account with this email already exists. Try logging in instead.';
+  }
+  if (lower.includes('password should be at least')) {
+    return 'Password is too short. Please use at least 6 characters.';
+  }
+  if (lower.includes('rate limit') || lower.includes('too many requests')) {
+    return 'Too many attempts. Please wait a minute and try again.';
+  }
+
+  return raw;
+}
 
 // ============================================================================
 // SUPABASE CLIENT
@@ -72,16 +112,28 @@ class SupabaseClient {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'Signup failed');
+        console.error('Signup error response:', data);
+        throw new Error(extractErrorMessage(data, 'Signup failed'));
       }
 
-      // Sign up successful, user is auto-logged in
-      this.session = data.session;
-      this.user = data.user;
-      this.saveSession();
+      // If Supabase returns a session immediately (email confirmation OFF),
+      // the user is logged in right away.
+      if (data.access_token) {
+        this.session = data;
+        this.user = data.user;
+        this.saveSession();
+        return { success: true, user: this.user, needsConfirmation: false };
+      }
 
-      return { success: true, user: this.user };
+      // If there's no session but signup succeeded, email confirmation is ON.
+      // The user exists but must confirm their email before logging in.
+      return {
+        success: true,
+        user: data.user || null,
+        needsConfirmation: true,
+      };
     } catch (error) {
+      console.error('Signup exception:', error);
       return { success: false, error: error.message };
     }
   }
@@ -103,7 +155,8 @@ class SupabaseClient {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error_description || 'Login failed');
+        console.error('Login error response:', data);
+        throw new Error(extractErrorMessage(data, 'Login failed'));
       }
 
       this.session = data;
@@ -112,6 +165,7 @@ class SupabaseClient {
 
       return { success: true, user: this.user };
     } catch (error) {
+      console.error('Login exception:', error);
       return { success: false, error: error.message };
     }
   }
@@ -230,6 +284,7 @@ class SupabaseClient {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.session.access_token}`,
           apikey: this.key,
+          Prefer: 'return=representation',
         },
         body: JSON.stringify(payload),
       });
@@ -240,7 +295,7 @@ class SupabaseClient {
       }
 
       const error = await response.json();
-      return { success: false, error: error.message || 'Insert failed' };
+      return { success: false, error: extractErrorMessage(error, 'Insert failed') };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -261,6 +316,7 @@ class SupabaseClient {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${this.session.access_token}`,
             apikey: this.key,
+            Prefer: 'return=representation',
           },
           body: JSON.stringify(data),
         }
@@ -272,7 +328,7 @@ class SupabaseClient {
       }
 
       const error = await response.json();
-      return { success: false, error: error.message || 'Update failed' };
+      return { success: false, error: extractErrorMessage(error, 'Update failed') };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -301,7 +357,7 @@ class SupabaseClient {
       }
 
       const error = await response.json();
-      return { success: false, error: error.message || 'Delete failed' };
+      return { success: false, error: extractErrorMessage(error, 'Delete failed') };
     } catch (error) {
       return { success: false, error: error.message };
     }

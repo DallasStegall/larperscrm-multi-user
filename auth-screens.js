@@ -330,6 +330,9 @@ class AuthUI {
       return;
     }
 
+    // Clear any previous error before trying
+    errorDiv.classList.remove('show');
+
     button.disabled = true;
     button.textContent = 'Logging in...';
 
@@ -369,18 +372,31 @@ class AuthUI {
       return;
     }
 
-    if (password.length < 8) {
-      this.showError('Password must be at least 8 characters', errorDiv);
+    if (password.length < 6) {
+      this.showError('Password must be at least 6 characters', errorDiv);
       return;
     }
+
+    // Clear any previous error before trying
+    errorDiv.classList.remove('show');
 
     button.disabled = true;
     button.textContent = 'Creating account...';
 
     const result = await db.signup(email, password, name);
 
-    if (result.success) {
-      this.showSuccess('Account created! Redirecting...', document.getElementById('auth-success'));
+    if (result.success && result.needsConfirmation) {
+      // Email confirmation is ON — the account exists but can't log in yet.
+      this.showSuccess(
+        'Account created! Please check your email for a confirmation link, ' +
+        'then come back and log in.',
+        document.getElementById('auth-success')
+      );
+      button.disabled = false;
+      button.textContent = 'Sign up';
+    } else if (result.success) {
+      // Auto-logged in (email confirmation OFF)
+      this.showSuccess('Account created! Loading your dashboard...', document.getElementById('auth-success'));
       setTimeout(() => {
         this.hide();
         window.location.reload();
