@@ -234,6 +234,43 @@ class SupabaseClient {
   }
 
   /**
+   * Update the current agent's profile row.
+   * The profiles table is keyed by id (= auth uid) and has no agent_id column,
+   * so the generic update() helper can't target it — this filters by id.
+   * The "Agents can update their own profile" RLS policy restricts this to
+   * the signed-in agent's own row.
+   */
+  async updateProfile(data) {
+    if (!this.user?.id) return { success: false, error: 'Not authenticated' };
+
+    try {
+      const response = await fetch(
+        `${this.url}/rest/v1/profiles?id=eq.${this.user.id}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${this.session.access_token}`,
+            apikey: this.key,
+            Prefer: 'return=representation',
+          },
+          body: JSON.stringify(data),
+        }
+      );
+
+      if (response.ok) {
+        const result = await response.json();
+        return { success: true, data: result[0] || result };
+      }
+
+      const error = await response.json();
+      return { success: false, error: extractErrorMessage(error, 'Profile update failed') };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Generic query helper for reading data
    * Only returns rows where agent_id = current user
    */

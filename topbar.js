@@ -319,6 +319,16 @@
 
     if (signOut) signOut.addEventListener('click', (e) => { e.stopPropagation(); handleSignOut(); });
 
+    const settingsItem = document.getElementById('userMenuSettings');
+    if (settingsItem) {
+      settingsItem.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeAll();
+        if (typeof showPage === 'function') showPage('settings');
+        if (typeof window.loadSettings === 'function') window.loadSettings();
+      });
+    }
+
     // Close on outside click / Escape
     document.addEventListener('click', (e) => {
       const nw = document.getElementById('notifWrap');

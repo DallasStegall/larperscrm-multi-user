@@ -1132,6 +1132,7 @@ body {
 <script src="f2f.js"></script>
 <script src="carrier-appointments.js"></script>
 <script src="integrations.js"></script>
+<script src="settings.js"></script>
 <script src="topbar.js"></script>
 </head>
 <body>
@@ -1393,6 +1394,10 @@ body {
               </div>
             </div>
             <div class="user-pop-divider"></div>
+            <button class="user-pop-item" id="userMenuSettings">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>Settings</span>
+            </button>
             <button class="user-pop-item user-pop-signout" id="userMenuSignOut">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
             <span>Sign out</span>
@@ -3328,6 +3333,147 @@ body {
           </div>
         </div>
       </div>
+
+      <!-- SETTINGS -->
+      <div class="page-view" id="page-settings" style="display:none">
+        <div class="page-header">
+          <div>
+            <h1 class="greeting"><span class="name-grad">Settings</span></h1>
+            <p class="page-sub">Manage your profile and how you get reminders.</p>
+          </div>
+        </div>
+
+        <div class="settings-wrap">
+          <!-- PROFILE -->
+          <div class="settings-card">
+            <div class="settings-card-head">
+              <div class="settings-card-title">Profile</div>
+              <div class="settings-card-sub">Your details. These are private to your account.</div>
+            </div>
+            <div id="profileError" class="auth-error" style="margin:0 20px;"></div>
+            <div class="settings-card-body">
+              <div class="settings-grid">
+                <div>
+                  <label class="modal-label">Full Name</label>
+                  <input type="text" class="modal-select" id="setFullName" placeholder="Your name">
+                </div>
+                <div>
+                  <label class="modal-label">Email</label>
+                  <input type="email" class="modal-select" id="setEmail" disabled title="Your login email can't be changed here">
+                </div>
+                <div>
+                  <label class="modal-label">Phone Number</label>
+                  <input type="tel" class="modal-select" id="setPhone" placeholder="+1 (555) 123-4567">
+                </div>
+                <div>
+                  <label class="modal-label">NPN</label>
+                  <input type="text" class="modal-select" id="setNpn" placeholder="National Producer Number">
+                </div>
+              </div>
+            </div>
+            <div class="settings-card-foot">
+              <button class="btn-generate-link settings-save-btn" id="saveProfileBtn">Save Profile</button>
+            </div>
+          </div>
+
+          <!-- NOTIFICATIONS & REMINDERS -->
+          <div class="settings-card">
+            <div class="settings-card-head">
+              <div class="settings-card-title">Notifications &amp; Reminders</div>
+              <div class="settings-card-sub">Choose how you'd like to be reminded. Reminders are sent by your admin's reminder service once it's turned on.</div>
+            </div>
+            <div id="remindersError" class="auth-error" style="margin:0 20px;"></div>
+            <div id="remindersMigrationNote" class="settings-note" style="display:none; margin:0 20px 4px;"></div>
+            <div class="settings-card-body">
+              <div class="settings-row">
+                <div class="settings-row-label">
+                  <div class="settings-row-title">Reminder channel</div>
+                  <div class="settings-row-desc">Where reminders are delivered.</div>
+                </div>
+                <div class="settings-channel">
+                  <label class="settings-check"><input type="checkbox" id="setViaSms"><span>Text (SMS)</span></label>
+                  <label class="settings-check"><input type="checkbox" id="setViaEmail"><span>Email</span></label>
+                </div>
+              </div>
+
+              <div class="settings-row" id="reminderEmailRow">
+                <div class="settings-row-label">
+                  <div class="settings-row-title">Reminder email</div>
+                  <div class="settings-row-desc">Defaults to your login email. Override if you want reminders elsewhere.</div>
+                </div>
+                <input type="email" class="modal-select settings-inline-input" id="setReminderEmail" placeholder="you@email.com">
+              </div>
+
+              <div class="settings-divider"></div>
+
+              <div class="settings-row">
+                <div class="settings-row-label">
+                  <div class="settings-row-title">Appointment reminders</div>
+                  <div class="settings-row-desc">Get reminded before each calendar appointment.</div>
+                </div>
+                <label class="settings-switch"><input type="checkbox" id="setApptEnabled" checked><span class="settings-slider"></span></label>
+              </div>
+              <div class="settings-row" id="apptLeadRow">
+                <div class="settings-row-label">
+                  <div class="settings-row-title">Remind me</div>
+                  <div class="settings-row-desc">How far ahead of the appointment.</div>
+                </div>
+                <select class="modal-select settings-inline-input" id="setApptLead">
+                  <option value="15">15 minutes before</option>
+                  <option value="60">1 hour before</option>
+                  <option value="120">2 hours before</option>
+                  <option value="1440" selected>1 day before</option>
+                  <option value="2880">2 days before</option>
+                </select>
+              </div>
+
+              <div class="settings-divider"></div>
+
+              <div class="settings-row">
+                <div class="settings-row-label">
+                  <div class="settings-row-title">Waiting Face-to-Face sessions</div>
+                  <div class="settings-row-desc">Remind me when a client session is still waiting.</div>
+                </div>
+                <label class="settings-switch"><input type="checkbox" id="setF2fEnabled" checked><span class="settings-slider"></span></label>
+              </div>
+            </div>
+            <div class="settings-card-foot">
+              <button class="btn-generate-link settings-save-btn" id="saveRemindersBtn">Save Preferences</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style>
+        .settings-wrap { max-width: 760px; display: flex; flex-direction: column; gap: 20px; }
+        .settings-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+        .settings-card-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--border); }
+        .settings-card-title { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 16px; font-weight: 700; color: var(--text); }
+        .settings-card-sub { font-size: 12.5px; color: var(--text2); margin-top: 4px; line-height: 1.5; }
+        .settings-card-body { padding: 18px 20px; }
+        .settings-card-foot { padding: 0 20px 18px; display: flex; justify-content: flex-end; }
+        .settings-save-btn { width: auto; padding: 11px 22px; margin: 0; }
+        .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        .settings-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 0; }
+        .settings-row + .settings-row { border-top: 1px solid var(--border); }
+        .settings-row-label { min-width: 0; }
+        .settings-row-title { font-size: 13.5px; font-weight: 600; color: var(--text); }
+        .settings-row-desc { font-size: 12px; color: var(--text2); margin-top: 2px; line-height: 1.4; }
+        .settings-inline-input { width: 220px; flex-shrink: 0; }
+        .settings-channel { display: flex; gap: 18px; flex-shrink: 0; }
+        .settings-check { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text); cursor: pointer; }
+        .settings-check input { width: 16px; height: 16px; accent-color: var(--primary); cursor: pointer; }
+        .settings-divider { height: 1px; background: var(--border); margin: 6px 0; }
+        .settings-note { font-size: 12px; color: var(--warning); background: hsl(38, 92%, 50%, 0.1); border: 1px solid hsl(38, 92%, 50%, 0.3); border-radius: 8px; padding: 10px 12px; line-height: 1.5; }
+        /* toggle switch */
+        .settings-switch { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }
+        .settings-switch input { opacity: 0; width: 0; height: 0; }
+        .settings-slider { position: absolute; inset: 0; background: var(--bg3); border: 1px solid var(--border2); border-radius: 24px; cursor: pointer; transition: all 0.15s; }
+        .settings-slider::before { content: ''; position: absolute; height: 16px; width: 16px; left: 3px; top: 3px; background: var(--text2); border-radius: 50%; transition: all 0.15s; }
+        .settings-switch input:checked + .settings-slider { background: var(--primary-dim); border-color: var(--primary); }
+        .settings-switch input:checked + .settings-slider::before { transform: translateX(18px); background: var(--primary); }
+        @media (max-width: 720px) { .settings-grid { grid-template-columns: 1fr; } .settings-inline-input { width: 160px; } }
+      </style>
 
       <!-- MY POLICIES -->
       <div class="page-view" id="page-policies" style="display:none">
