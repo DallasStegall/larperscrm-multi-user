@@ -79,6 +79,9 @@ class SupabaseClient {
       try {
         this.session = JSON.parse(stored);
         this.user = this.session.user;
+        // Refresh a stale/expired token up front so returning agents stay
+        // logged in instead of being bounced to the login screen.
+        await this.maybeRefresh();
         // Verify the session is still valid by fetching the user
         const user = await this.getUser();
         if (!user) {
@@ -87,6 +90,10 @@ class SupabaseClient {
       } catch (e) {
         this.clearSession();
       }
+    }
+    // Keep the token fresh while the app is open (access tokens last ~1h).
+    if (!this._refreshTimer) {
+      this._refreshTimer = setInterval(() => { this.maybeRefresh(); }, 4 * 60 * 1000);
     }
     return this.session;
   }
@@ -119,6 +126,7 @@ class SupabaseClient {
       // If Supabase returns a session immediately (email confirmation OFF),
       // the user is logged in right away.
       if (data.access_token) {
+        this._stampExpiry(data);
         this.session = data;
         this.user = data.user;
         this.saveSession();
@@ -159,6 +167,7 @@ class SupabaseClient {
         throw new Error(extractErrorMessage(data, 'Login failed'));
       }
 
+      this._stampExpiry(data);
       this.session = data;
       this.user = data.user;
       this.saveSession();
@@ -167,6 +176,63 @@ class SupabaseClient {
     } catch (error) {
       console.error('Login exception:', error);
       return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Record when this session's access token expires (unix seconds), so we can
+   * refresh it proactively instead of letting the agent get silently logged out.
+   */
+  _stampExpiry(data) {
+    if (data && !data.expires_at && data.expires_in) {
+      data.expires_at = Math.floor(Date.now() / 1000) + Number(data.expires_in);
+    }
+  }
+
+  /**
+   * Exchange the refresh token for a fresh access token. Returns true on
+   * success. If the refresh token itself is no longer valid, the session is
+   * cleared so the auth screen takes over on the next check.
+   */
+  async refreshSession() {
+    if (!this.session?.refresh_token) return false;
+    try {
+      const response = await fetch(`${this.url}/auth/v1/token?grant_type=refresh_token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: this.key },
+        body: JSON.stringify({ refresh_token: this.session.refresh_token }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.access_token) {
+        // Refresh token expired/revoked — force a clean re-login.
+        this.clearSession();
+        return false;
+      }
+
+      this._stampExpiry(data);
+      this.session = data;
+      this.user = data.user || this.user;
+      this.saveSession();
+      return true;
+    } catch (error) {
+      // Network hiccup: keep the existing session and try again next time.
+      return false;
+    }
+  }
+
+  /**
+   * Refresh the access token if it's expired or about to expire (within 60s).
+   * Called before authenticated requests and on a periodic timer.
+   */
+  async maybeRefresh() {
+    if (!this.session?.access_token) return;
+    const exp = this.session.expires_at;
+    if (!exp) return; // unknown expiry — nothing we can safely do
+    const now = Math.floor(Date.now() / 1000);
+    if (exp - now <= 60) {
+      await this.refreshSession();
     }
   }
 
@@ -301,6 +367,32 @@ class SupabaseClient {
       return [];
     } catch (error) {
       console.error(`Error querying ${table}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Shared read that is NOT scoped to the current agent — for tables like the
+   * leaderboard's `sales`, where every signed-in agent is allowed to read all
+   * rows (the table's RLS policy grants that). Pass a raw PostgREST query
+   * string, e.g. "sold_at=gte.2026-01-01&order=sold_at.desc&limit=2000".
+   */
+  async queryShared(table, query = '') {
+    if (!this.session?.access_token) return [];
+
+    try {
+      const url = `${this.url}/rest/v1/${table}${query ? '?' + query : ''}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${this.session.access_token}`,
+          apikey: this.key,
+        },
+      });
+
+      if (response.ok) return await response.json();
+      return [];
+    } catch (error) {
+      console.error(`Error querying ${table} (shared):`, error);
       return [];
     }
   }

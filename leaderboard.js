@@ -1,0 +1,278 @@
+/**
+ * LarpersCRM — Leaderboard
+ *
+ * Shows real-time sales ranked by Annual Premium (AP) across ALL agents, for a
+ * chosen time range. Data lives in the shared public.sales table (every signed-in
+ * agent can read all rows; see leaderboard-migration.sql). Sales arrive either
+ * from Discord (via the discord-sales Edge Function) or by an agent logging one
+ * here. The board polls every 20s while visible so it stays "live".
+ */
+
+(function () {
+  let sales = [];
+  let currentRange = 'today';
+  let customFrom = null;
+  let customTo = null;
+  let pollTimer = null;
+  let lastUpdated = 0;
+  let loadedOnce = false;
+
+  const $ = (id) => document.getElementById(id);
+
+  function escapeHtml(str) {
+    return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  function money(n) {
+    return '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
+  }
+
+  function currentAgentName() {
+    if (window.currentAgentName) return String(window.currentAgentName);
+    const meta = (db.user && (db.user.user_metadata || db.user.raw_user_meta_data)) || {};
+    if (meta.full_name) return String(meta.full_name);
+    if (db.user && db.user.email) return db.user.email.split('@')[0];
+    return 'Agent';
+  }
+
+  // ---- time ranges -----------------------------------------------------------
+  function rangeBounds(key) {
+    const now = new Date();
+    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const DAY = 86400000;
+    const tomorrow = new Date(dayStart.getTime() + DAY);
+
+    switch (key) {
+      case 'today': return [dayStart.getTime(), tomorrow.getTime()];
+      case 'yesterday': return [dayStart.getTime() - DAY, dayStart.getTime()];
+      case 'wtd': return [dayStart.getTime() - now.getDay() * DAY, tomorrow.getTime()]; // week starts Sunday
+      case 'mtd': return [new Date(now.getFullYear(), now.getMonth(), 1).getTime(), tomorrow.getTime()];
+      case 'ytd': return [new Date(now.getFullYear(), 0, 1).getTime(), tomorrow.getTime()];
+      case 'all': return [0, tomorrow.getTime()];
+      case 'custom': {
+        const start = customFrom ? new Date(customFrom + 'T00:00:00').getTime() : 0;
+        const end = customTo ? new Date(customTo + 'T23:59:59.999').getTime() : tomorrow.getTime();
+        return [start, end];
+      }
+      default: return [dayStart.getTime(), tomorrow.getTime()];
+    }
+  }
+
+  // ---- aggregation -----------------------------------------------------------
+  function aggregate() {
+    const [start, end] = rangeBounds(currentRange);
+    const groups = new Map();
+    let totalAp = 0;
+    let salesCount = 0;
+
+    for (const s of sales) {
+      const t = s.sold_at ? new Date(s.sold_at).getTime() : NaN;
+      if (isNaN(t) || t < start || t >= end) continue;
+
+      const ap = Number(s.ap) || 0;
+      const name = (s.agent_name && String(s.agent_name).trim()) || 'Unknown';
+      const key = s.agent_id || ('name:' + name.toLowerCase());
+
+      const g = groups.get(key) || { name, ap: 0, count: 0 };
+      g.ap += ap;
+      g.count += 1;
+      g.name = name; // keep latest display name
+      groups.set(key, g);
+
+      totalAp += ap;
+      salesCount += 1;
+    }
+
+    const ranked = Array.from(groups.values()).sort((a, b) => (b.ap - a.ap) || (b.count - a.count));
+    return { ranked, totalAp, salesCount, agents: groups.size };
+  }
+
+  function medal(rank) {
+    // colored medal for top 3, plain rank number otherwise
+    if (rank <= 3) {
+      return `<svg class="lb-medal lb-rank-${rank}" viewBox="0 0 24 24" fill="currentColor" stroke="none">`
+        + `<path d="M7.5 2h9l-2.2 6.3a5 5 0 1 1-4.6 0L7.5 2Z" opacity="0.25"/>`
+        + `<circle cx="12" cy="14" r="6" fill="currentColor"/>`
+        + `<text x="12" y="17.5" text-anchor="middle" font-size="7.5" font-weight="800" fill="#0c0e14" font-family="Plus Jakarta Sans, sans-serif">${rank}</text>`
+        + `</svg>`;
+    }
+    return `<span class="lb-rank-num">#${rank}</span>`;
+  }
+
+  function render() {
+    const { ranked, totalAp, salesCount, agents } = aggregate();
+
+    $('lbTotalAp').textContent = money(totalAp);
+    $('lbSalesCount').textContent = String(salesCount);
+    $('lbAgentsCount').textContent = String(agents);
+
+    $('lbLoading').style.display = 'none';
+
+    if (!ranked.length) {
+      $('lbEmpty').style.display = '';
+      $('lbList').style.display = 'none';
+    } else {
+      $('lbEmpty').style.display = 'none';
+      const list = $('lbList');
+      list.style.display = '';
+      list.innerHTML = ranked.map((g, i) => {
+        const rank = i + 1;
+        return `
+          <div class="lb-row rank-${rank}">
+            <div class="lb-rank">${medal(rank)}</div>
+            <div class="lb-name">${escapeHtml(g.name)}</div>
+            <div class="lb-figures">
+              <div class="lb-ap">${money(g.ap)}</div>
+              <div class="lb-sales">${g.count} ${g.count === 1 ? 'sale' : 'sales'}</div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    updateLiveIndicator();
+  }
+
+  function updateLiveIndicator() {
+    const el = $('lbLive');
+    if (!el) return;
+    const fresh = lastUpdated && (Date.now() - lastUpdated) < 60000;
+    el.classList.toggle('stale', !fresh);
+  }
+
+  // ---- data ------------------------------------------------------------------
+  async function fetchSales() {
+    if (typeof db === 'undefined' || !db.isAuthenticated()) return false;
+    const rows = await db.queryShared('sales', 'order=sold_at.desc&limit=2000');
+    sales = Array.isArray(rows) ? rows : [];
+    lastUpdated = Date.now();
+    return true;
+  }
+
+  async function loadLeaderboard() {
+    if (!loadedOnce) {
+      $('lbLoading').style.display = '';
+      $('lbEmpty').style.display = 'none';
+      $('lbList').style.display = 'none';
+    }
+    const ok = await fetchSales();
+    loadedOnce = true;
+    render();
+    startPolling();
+    return ok;
+  }
+  window.loadLeaderboard = loadLeaderboard;
+
+  function leaderboardVisible() {
+    const p = $('page-leaderboard');
+    return p && p.style.display !== 'none';
+  }
+
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(async () => {
+      if (!leaderboardVisible()) { updateLiveIndicator(); return; }
+      const ok = await fetchSales();
+      if (ok) render();
+    }, 20000);
+  }
+
+  // ---- tabs / custom range ---------------------------------------------------
+  function setRange(key) {
+    currentRange = key;
+    document.querySelectorAll('#lbTabs .lb-tab').forEach((t) => {
+      t.classList.toggle('active', t.dataset.range === key);
+    });
+    $('lbCustomRow').style.display = key === 'custom' ? '' : 'none';
+    render();
+  }
+
+  // ---- log sale --------------------------------------------------------------
+  const saleOverlay = () => $('saleModalOverlay');
+  const saleErr = () => $('saleModalError');
+
+  function openSaleModal() {
+    $('saleForm').reset();
+    saleErr().classList.remove('show');
+    saleErr().textContent = '';
+    saleOverlay().style.display = 'flex';
+  }
+  function closeSaleModal() {
+    saleOverlay().style.display = 'none';
+  }
+
+  async function submitSale(e) {
+    e.preventDefault();
+    const ap = parseFloat($('saleAp').value);
+    if (isNaN(ap) || ap < 0) return;
+
+    const payload = {
+      agent_name: currentAgentName(),
+      ap,
+      carrier: $('saleCarrier').value.trim() || null,
+      product: $('saleProduct').value.trim() || null,
+      client_name: $('saleClient').value.trim() || null,
+      source: 'crm',
+    };
+    const dateVal = $('saleDate').value;
+    if (dateVal) payload.sold_at = new Date(dateVal + 'T12:00:00').toISOString();
+
+    const btn = $('saleSubmitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+
+    const result = await db.insert('sales', payload); // db.insert adds agent_id = auth.uid()
+
+    btn.disabled = false;
+    btn.textContent = 'Save Sale';
+
+    if (!result.success) {
+      const raw = String(result.error || '');
+      const missing = /relation|does not exist|sales/i.test(raw) && /exist|schema|relation/i.test(raw);
+      saleErr().textContent = missing
+        ? 'Couldn’t save — the sales table isn’t in the database yet. Run leaderboard-migration.sql in Supabase, then try again.'
+        : (raw || 'Could not save the sale. Please try again.');
+      saleErr().classList.add('show');
+      return;
+    }
+
+    closeSaleModal();
+    await loadLeaderboard();
+    if (typeof showToast === 'function') showToast('Sale added to the leaderboard');
+  }
+
+  // ---- init ------------------------------------------------------------------
+  function init() {
+    const page = $('page-leaderboard');
+    if (!page) return; // leaderboard not present
+
+    document.querySelectorAll('#lbTabs .lb-tab').forEach((t) => {
+      t.addEventListener('click', () => setRange(t.dataset.range));
+    });
+
+    const applyBtn = $('lbCustomApply');
+    if (applyBtn) {
+      applyBtn.addEventListener('click', () => {
+        customFrom = $('lbCustomFrom').value || null;
+        customTo = $('lbCustomTo').value || null;
+        render();
+      });
+    }
+
+    const logBtn = $('logSaleBtn');
+    if (logBtn) logBtn.addEventListener('click', openSaleModal);
+    const closeBtn = $('closeSaleModal');
+    if (closeBtn) closeBtn.addEventListener('click', closeSaleModal);
+    const overlay = saleOverlay();
+    if (overlay) overlay.addEventListener('click', (e) => { if (e.target === overlay) closeSaleModal(); });
+    const form = $('saleForm');
+    if (form) form.addEventListener('submit', submitSale);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
