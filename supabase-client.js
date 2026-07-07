@@ -378,7 +378,10 @@ class SupabaseClient {
    * string, e.g. "sold_at=gte.2026-01-01&order=sold_at.desc&limit=2000".
    */
   async queryShared(table, query = '') {
-    if (!this.session?.access_token) return [];
+    // Returns an array on success (possibly empty), or null on failure — so
+    // callers can tell "no rows" apart from "the request failed" (e.g. a 401
+    // from an expired token, or a network blip) and avoid wiping good data.
+    if (!this.session?.access_token) return null;
 
     try {
       const url = `${this.url}/rest/v1/${table}${query ? '?' + query : ''}`;
@@ -390,10 +393,11 @@ class SupabaseClient {
       });
 
       if (response.ok) return await response.json();
-      return [];
+      console.error(`Error querying ${table} (shared): HTTP ${response.status}`);
+      return null;
     } catch (error) {
       console.error(`Error querying ${table} (shared):`, error);
-      return [];
+      return null;
     }
   }
 

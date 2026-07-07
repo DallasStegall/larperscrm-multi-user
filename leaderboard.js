@@ -38,25 +38,34 @@
   }
 
   // ---- time ranges -----------------------------------------------------------
+  // Bounds are built from calendar components (new Date(y, m, d)) rather than by
+  // adding a fixed 24h, so day boundaries stay at true local midnight even
+  // across daylight-saving transitions (JS normalizes day overflow correctly).
   function rangeBounds(key) {
     const now = new Date();
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const DAY = 86400000;
-    const tomorrow = new Date(dayStart.getTime() + DAY);
+    const y = now.getFullYear();
+    const m = now.getMonth();
+    const d = now.getDate();
+    const dayMs = (yy, mm, dd) => new Date(yy, mm, dd).getTime();
+
+    const today = dayMs(y, m, d);
+    const tomorrow = dayMs(y, m, d + 1);
 
     switch (key) {
-      case 'today': return [dayStart.getTime(), tomorrow.getTime()];
-      case 'yesterday': return [dayStart.getTime() - DAY, dayStart.getTime()];
-      case 'wtd': return [dayStart.getTime() - now.getDay() * DAY, tomorrow.getTime()]; // week starts Sunday
-      case 'mtd': return [new Date(now.getFullYear(), now.getMonth(), 1).getTime(), tomorrow.getTime()];
-      case 'ytd': return [new Date(now.getFullYear(), 0, 1).getTime(), tomorrow.getTime()];
-      case 'all': return [0, tomorrow.getTime()];
+      case 'today': return [today, tomorrow];
+      case 'yesterday': return [dayMs(y, m, d - 1), today];
+      case 'wtd': return [dayMs(y, m, d - now.getDay()), tomorrow]; // week starts Sunday
+      case 'mtd': return [dayMs(y, m, 1), tomorrow];
+      case 'ytd': return [dayMs(y, 0, 1), tomorrow];
+      case 'all': return [0, tomorrow];
       case 'custom': {
-        const start = customFrom ? new Date(customFrom + 'T00:00:00').getTime() : 0;
-        const end = customTo ? new Date(customTo + 'T23:59:59.999').getTime() : tomorrow.getTime();
+        const parse = (s) => { const p = s.split('-').map(Number); return [p[0], p[1] - 1, p[2]]; };
+        const start = customFrom ? dayMs(...parse(customFrom)) : 0;
+        const [ey, em, ed] = customTo ? parse(customTo) : [y, m, d];
+        const end = customTo ? dayMs(ey, em, ed + 1) : tomorrow; // inclusive of the "to" day
         return [start, end];
       }
-      default: return [dayStart.getTime(), tomorrow.getTime()];
+      default: return [today, tomorrow];
     }
   }
 
@@ -73,7 +82,9 @@
 
       const ap = Number(s.ap) || 0;
       const name = (s.agent_name && String(s.agent_name).trim()) || 'Unknown';
-      const key = s.agent_id || ('name:' + name.toLowerCase());
+      // Group by display name so a person's Discord sales (no agent_id) and
+      // CRM-logged sales (with agent_id) merge into one leaderboard row.
+      const key = 'name:' + name.toLowerCase().replace(/\s+/g, ' ');
 
       const g = groups.get(key) || { name, ap: 0, count: 0 };
       g.ap += ap;
@@ -142,23 +153,40 @@
   }
 
   // ---- data ------------------------------------------------------------------
+  // Reads the leaderboard_entries VIEW (agent name + AP + date only — no
+  // customer PII), which every signed-in agent may read. Returns true only on a
+  // genuine success; on failure it leaves the existing `sales` untouched so a
+  // blip or expired token can't wipe a good board to zeros.
   async function fetchSales() {
     if (typeof db === 'undefined' || !db.isAuthenticated()) return false;
-    const rows = await db.queryShared('sales', 'order=sold_at.desc&limit=2000');
+    const rows = await db.queryShared('leaderboard_entries', 'order=sold_at.desc&limit=2000');
+    if (rows === null) return false; // request failed — keep what we have
     sales = Array.isArray(rows) ? rows : [];
     lastUpdated = Date.now();
     return true;
   }
 
+  function renderError() {
+    const l = $('lbLoading');
+    l.textContent = 'Couldn’t load the leaderboard — retrying…';
+    l.style.display = '';
+    $('lbEmpty').style.display = 'none';
+    $('lbList').style.display = 'none';
+    updateLiveIndicator();
+  }
+
   async function loadLeaderboard() {
     if (!loadedOnce) {
+      $('lbLoading').textContent = 'Loading the leaderboard…';
       $('lbLoading').style.display = '';
       $('lbEmpty').style.display = 'none';
       $('lbList').style.display = 'none';
     }
     const ok = await fetchSales();
     loadedOnce = true;
-    render();
+    if (ok) render();
+    else if (sales.length) updateLiveIndicator(); // keep showing data, let it go stale
+    else renderError();
     startPolling();
     return ok;
   }
@@ -175,6 +203,7 @@
       if (!leaderboardVisible()) { updateLiveIndicator(); return; }
       const ok = await fetchSales();
       if (ok) render();
+      else updateLiveIndicator(); // failed poll: don't wipe data, just let "Live" go stale
     }, 20000);
   }
 
