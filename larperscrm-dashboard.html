@@ -5815,23 +5815,32 @@ navItems.forEach(item => {
 
   // Carrier directory data — your contracted carriers with public agent portal links
   const carriers = [
-    { name: 'Aetna', tags: ['Ages 80+'], links: { agentPortal: 'https://www.aetna.com/producer_public/login.fcc', numbers: 1 } },
-    { name: 'American Amicable', tags: [], links: { agentPortal: 'https://www.americanamicable.com/v4/AgentLogin.php', numbers: 1 } },
-    { name: 'American Home Life', tags: [], links: { agentPortal: 'https://www.amhomelife.com/ahlcas/login', numbers: 1 } },
-    { name: 'Americo', tags: ['Ages 80+'], links: { agentPortal: 'https://portal.americoagent.com/', numbers: 1 } },
-    { name: 'Chubb', tags: [], links: { agentPortal: 'https://www.chubb.com/us-en/agents-brokers/agent-broker-log-in.html', numbers: 1 } },
-    { name: 'Corebridge', tags: ['CC'], links: { agentPortal: 'https://connext.corebridgefinancial.com/life/connext-portal/public/login', numbers: 1 } },
-    { name: 'Ethos', tags: ['Up to $100k', 'Ages 80+'], links: { agentPortal: 'https://agents.ethoslife.com/login', numbers: 1 } },
-    { name: 'F&G', tags: [], links: { agentPortal: 'https://saleslink.fglife.com/', numbers: 1 } },
-    { name: 'Foresters', tags: [], links: { agentPortal: 'https://ezbiz.foresters.com/', numbers: 1 } },
-    { name: 'Gerber', tags: [], links: { agentPortal: 'https://www.gerberlife.com/gl/ap/view/agency/login.jsp', numbers: 1 } },
-    { name: 'InstaBrain', tags: [], links: { agentPortal: 'https://portal.instabrain.io/', numbers: 1 } },
-    { name: 'Liberty Bankers', tags: [], links: { agentPortal: 'https://agent.lbig.com/', numbers: 1 } },
-    { name: 'Mutual Of Omaha', tags: ['Ages 80+'], links: { agentPortal: 'https://producer.mutualofomaha.com/', numbers: 1 } },
-    { name: 'National Life Group', tags: [], links: { agentPortal: 'https://www.nationallife.com/agent/', numbers: 1 } },
-    { name: 'Royal Neighbors of America', tags: [], links: { agentPortal: 'https://agent.royalneighbors.org/', numbers: 1 } },
-    { name: 'Transamerica', tags: ['Up to $100k', 'Ages 80+'], links: { agentPortal: 'https://www.transamerica.com/login/financial-professional', numbers: 1 } },
-    { name: 'United Home Life', tags: [], links: { agentPortal: 'https://agentportal.unitedhomelife.com/', numbers: 1 } }
+    { name: 'Aetna', tags: ['Ages 80+'], links: { quotes: 'https://www.aetnaseniorproducts.com/ssi/index.html', agentPortal: 'https://www.aetnaseniorproducts.com/ssi/index.html', eapp: 'https://www.aetnaseniorproducts.com/ssi/index.html' } },
+    { name: 'American Amicable', tags: [], links: { quotes: 'https://www.insuranceapplication.com/AppPage/index.html', agentPortal: 'https://www.americanamicable.com/v4/AgentLogin.php', eapp: 'https://www.insuranceapplication.com/AppPage/index.html' } },
+    { name: 'American Home Life', tags: [], links: { quotes: 'https://www.aetnaseniorproducts.com/ssibrokerwebaz/agent/home?channel=amh', agentPortal: 'https://www.aetnaseniorproducts.com/ssibrokerwebaz/agent/home?channel=amh', eapp: 'https://www.aetnaseniorproducts.com/ssibrokerwebaz/agent/home?channel=amh' } },
+    { name: 'Americo', tags: ['Ages 80+'], links: { quotes: 'https://tools.americoagent.com/', agentPortal: 'https://portal.americoagent.com/', eapp: 'https://tools.americoagent.com/' } },
+    { name: 'Baltimore', tags: [], links: { quotes: 'https://baltlifeb2c.b2clogin.com/baltlifeb2c.onmicrosoft.com/b2c_1_agentportalwithclaims_prod/oauth2/v2.0/authorize?client_id=f4fdc274-cf1a-44a0-8502-43e3848b68a8&scope=openid%20profile%20offline_access%20f4fdc274-cf1a-44a0-8502-43e3848b68a8&redirect_uri=https%3A%2F%2Fagentportal.baltlife.com%2F&response_mode=fragment&response_type=code&client_info=1', agentPortal: 'https://agentportal.baltlife.com/', eapp: 'https://baltlifeb2c.b2clogin.com/baltlifeb2c.onmicrosoft.com/b2c_1_agentportalwithclaims_prod/oauth2/v2.0/authorize?client_id=f4fdc274-cf1a-44a0-8502-43e3848b68a8&scope=openid%20profile%20offline_access%20f4fdc274-cf1a-44a0-8502-43e3848b68a8&redirect_uri=https%3A%2F%2Fagentportal.baltlife.com%2F&response_mode=fragment&response_type=code&client_info=1' } },
+    { name: 'Chubb', tags: [], links: { quotes: 'https://chubb.insuranceadmin.com/login', agentPortal: 'https://chubb.insuranceadmin.com/login', eapp: 'https://chubb.insuranceadmin.com/login' } },
+    { name: 'Columbus Life', tags: [], links: { quotes: 'https://agency.columbuslife.com/identity/login?signin=497efe1485d81431fbc38d89fa78c8c1', agentPortal: 'https://agency.columbuslife.com/identity/login?signin=497efe1485d81431fbc38d89fa78c8c1', eapp: 'https://agency.columbuslife.com/identity/login?signin=497efe1485d81431fbc38d89fa78c8c1' } },
+    { name: 'Corebridge', tags: ['CC'], links: { quotes: 'https://rapid-rater.live.web.corebridgefinancial.com/Simplinowquoter', agentPortal: 'https://www.connext.corebridgefinancial.com/life/connext-portal/app/home', eapp: 'https://www.connext.corebridgefinancial.com/life/connext-portal/app/home' } },
+    { name: 'Ethos', tags: ['Up to $100k', 'Ages 80+'], links: { quotes: 'https://agents.ethoslife.com/dashboard', agentPortal: 'https://agents.ethoslife.com/dashboard', eapp: 'https://agents.ethoslife.com/dashboard' } },
+    { name: 'F&G', tags: [], links: { quotes: 'https://saleslink.fglife.com/', agentPortal: 'https://saleslink.fglife.com/', eapp: 'https://saleslink.fglife.com/' } },
+    { name: 'Foresters', tags: [], links: { quotes: 'https://www.forestersmobile.com/quote-compare-only-product', agentPortal: 'https://myezbiz.foresters.com/my.policy', eapp: 'https://myezbiz.foresters.com/my.policy' } },
+    { name: 'Gerber', tags: [], links: { quotes: 'https://www.gerberlife.com/gl/ap/view/agency/login.jsp#products', agentPortal: 'https://www.gerberlife.com/gl/ap/view/agency/login.jsp#products', eapp: 'https://www.gerberlife.com/gl/ap/view/agency/login.jsp#products' } },
+    { name: 'Globe Life', tags: [], links: { quotes: 'https://sso.globelifeinc.com/SecureAuth66/', agentPortal: 'https://sso.globelifeinc.com/SecureAuth66/', eapp: 'https://sso.globelifeinc.com/SecureAuth66/' } },
+    { name: 'Guarantee Trust Life', tags: [], links: { quotes: 'https://eapp.gtlic.com/', agentPortal: 'https://eapp.gtlic.com/', eapp: 'https://eapp.gtlic.com/' } },
+    { name: 'InstaBrain', tags: [], links: { quotes: 'https://portal.instabrain.io/Account/Login', agentPortal: 'https://portal.instabrain.io/Account/Login', eapp: 'https://portal.instabrain.io/Account/Login' } },
+    { name: 'Lafayette', tags: [], links: { quotes: 'https://partner.westernsouthern.com/login?bu=llic', agentPortal: 'https://partner.westernsouthern.com/login?bu=llic', eapp: 'https://partner.westernsouthern.com/login?bu=llic' } },
+    { name: 'Liberty Bankers', tags: [], links: { agentPortal: 'https://agent.lbig.com/eapp', eapp: 'https://agent.lbig.com/eapp' }, note: 'Download "LBL preCHECK" app to access Liberty Bankers quotes' },
+    { name: 'Mutual Of Omaha', tags: ['Ages 80+'], links: { quotes: 'https://www3.mutualofomaha.com/mobile-quotes/#/home', agentPortal: 'https://accounts.mutualofomaha.com/', eapp: 'https://accounts.mutualofomaha.com/' } },
+    { name: 'National Life Group', tags: [], links: { quotes: 'https://nlg-prod.auth0.com/login', agentPortal: 'https://www.nationallife.com/agent/', eapp: 'https://nlg-prod.auth0.com/login' } },
+    { name: 'Polish Falcons', tags: [], links: { quotes: 'https://pfaflight.org/agent-login', agentPortal: 'https://www.fraternalsoftware.net/pfaportal/Account/Login.aspx', eapp: 'https://pfaflight.org/agent-login' } },
+    { name: 'Quility', tags: [], links: { quotes: 'https://b2b-hq.quility.com/', agentPortal: 'https://b2b-hq.quility.com/', eapp: 'https://b2b-hq.quility.com/' }, note: 'Used for UHL, SBLI, Banner Life' },
+    { name: 'Royal Neighbors of America', tags: [], links: { quotes: 'https://www.rnaquickquote.org/', agentPortal: 'https://agent.royalneighbors.org/secure/tools/application-submission-tools', eapp: 'https://agent.royalneighbors.org/secure/tools/application-submission-tools' } },
+    { name: 'SBLI', tags: [], links: { quotes: 'https://www.sbliagent.com/agentauth/login.aspx?ReturnUrl=%2fagent%2fplanlanding.aspx', agentPortal: 'https://www.sbliagent.com/agentauth/login.aspx?ReturnUrl=%2fagent%2fplanlanding.aspx', eapp: 'https://www.sbliagent.com/agentauth/login.aspx?ReturnUrl=%2fagent%2fplanlanding.aspx' } },
+    { name: 'Transamerica', tags: ['Up to $100k', 'Ages 80+'], links: { quotes: 'https://mytranswarequote.transamerica.com/Wl3.html?id=WL3IM', quotesTerm: 'https://lifesales.transamerica.com/', agentPortal: 'https://secure.transamerica.com/login/sign-in/login.html', eapp: 'https://secure.transamerica.com/login/sign-in/login.html' } },
+    { name: 'Trinity life', tags: [], links: { quotes: 'https://trinity.ihlic.com/', agentPortal: 'https://trinity.ihlic.com/', eapp: 'https://trinity.ihlic.com/' } },
+    { name: 'United Home Life', tags: [], links: { quotes: 'https://agentportal.unitedhomelife.com/home', agentPortal: 'https://agentportal.unitedhomelife.com/home', eapp: 'https://agentportal.unitedhomelife.com/home' } }
   ];
 
   const categories = [
@@ -5883,7 +5892,10 @@ navItems.forEach(item => {
 
   function pillsHtml(links) {
     let html = '';
+    if (links.quotes) html += `<a href="${links.quotes}" target="_blank" rel="noopener noreferrer" class="carrier-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg> Quotes</a>`;
+    if (links.quotesTerm) html += `<a href="${links.quotesTerm}" target="_blank" rel="noopener noreferrer" class="carrier-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg> Quotes (Term)</a>`;
     if (links.agentPortal) html += `<a href="${links.agentPortal}" target="_blank" rel="noopener noreferrer" class="carrier-pill pill-eapp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg> Agent Login</a>`;
+    if (links.eapp) html += `<a href="${links.eapp}" target="_blank" rel="noopener noreferrer" class="carrier-pill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg> E-APP</a>`;
     return html;
   }
 
@@ -5904,6 +5916,7 @@ navItems.forEach(item => {
           <div class="carrier-name">${c.name}${c.tags.length ? '<span class="carrier-tags-row">' + c.tags.map(tagHtml).join('') + '</span>' : ''}</div>
         </div>
         <div class="carrier-actions">${pillsHtml(c.links)}</div>
+        ${c.note ? `<p style="font-size:11px; color:var(--text3); font-style:italic; margin-top:10px;">${c.note}</p>` : ''}
       </div>
     `).join('');
   }
