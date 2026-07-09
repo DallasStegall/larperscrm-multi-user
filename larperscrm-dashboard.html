@@ -1134,6 +1134,7 @@ body {
 <script src="integrations.js"></script>
 <script src="leaderboard.js"></script>
 <script src="insights.js"></script>
+<script src="test-questions.js"></script>
 <script src="settings.js"></script>
 <script src="topbar.js"></script>
 </head>
@@ -6149,63 +6150,236 @@ navItems.forEach(item => {
   }
 })();
 
-/* ---- TEST PRACTICE ---- */
+/* ---- TEST PRACTICE (flashcards + multiple choice, real question bank) ---- */
 (function() {
   const tabFlash = document.getElementById('tabFlashCards');
   const tabMC = document.getElementById('tabMultipleChoice');
   const content = document.getElementById('testPracticeContent');
   if (!tabFlash) return;
 
-  function renderTestTab(tab) {
+  const BANK = Array.isArray(window.LARPERS_TEST_QUESTIONS) ? window.LARPERS_TEST_QUESTIONS : [];
+
+  function esc(str) {
+    return String(str == null ? '' : str).replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+  }
+
+  // Fisher–Yates, returns a new shuffled array.
+  function shuffled(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  // Inject the study-mode styles once.
+  if (!document.getElementById('tpStyles')) {
+    const st = document.createElement('style');
+    st.id = 'tpStyles';
+    st.textContent = `
+      .tp-player { max-width: 660px; }
+      .tp-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; flex-wrap:wrap; }
+      .tp-progress { font-size:13px; font-weight:600; color:var(--text2); }
+      .tp-flashcard { perspective:1400px; cursor:pointer; margin-bottom:16px; user-select:none; }
+      .tp-fc-inner { position:relative; width:100%; min-height:300px; transition:transform .5s; transform-style:preserve-3d; }
+      .tp-flashcard.flipped .tp-fc-inner { transform:rotateY(180deg); }
+      .tp-face { position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 32px; background:var(--bg2); border:1px solid var(--border2); border-radius:16px; text-align:center; }
+      .tp-face.tp-back { transform:rotateY(180deg); }
+      .tp-face-label { position:absolute; top:16px; left:20px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text3); }
+      .tp-face-text { font-size:18px; font-weight:600; color:var(--text); line-height:1.55; }
+      .tp-back .tp-face-text { color:var(--success); }
+      .tp-flip-hint { position:absolute; bottom:16px; font-size:11px; color:var(--text3); }
+      .tp-nav { display:flex; gap:10px; justify-content:center; }
+      .tp-question { font-size:17px; font-weight:600; color:var(--text); line-height:1.55; margin-bottom:18px; }
+      .tp-options { display:flex; flex-direction:column; gap:10px; margin-bottom:16px; }
+      .tp-option { display:flex; gap:10px; text-align:left; padding:14px 16px; border-radius:10px; border:1px solid var(--border2); background:var(--bg2); color:var(--text); font-size:14px; font-family:inherit; cursor:pointer; transition:all .12s; }
+      .tp-option .tp-opt-key { font-weight:800; color:var(--text3); flex-shrink:0; }
+      .tp-option:hover:not(:disabled) { border-color:var(--primary); background:var(--primary-dim); }
+      .tp-option:disabled { cursor:default; }
+      .tp-option.correct { border-color:var(--success); background:var(--success-dim); color:var(--success); }
+      .tp-option.correct .tp-opt-key { color:var(--success); }
+      .tp-option.incorrect { border-color:hsl(0,84%,60%); background:hsl(0,84%,60%,0.12); color:hsl(0,84%,65%); }
+      .tp-option.incorrect .tp-opt-key { color:hsl(0,84%,65%); }
+      .tp-feedback { font-size:13px; font-weight:600; margin-bottom:14px; min-height:18px; }
+      .tp-feedback.ok { color:var(--success); }
+      .tp-feedback.no { color:hsl(0,84%,65%); }
+      .tp-results { text-align:center; padding:36px 28px; background:var(--bg2); border:1px solid var(--border2); border-radius:16px; max-width:460px; }
+      .tp-results-score { font-family:'Plus Jakarta Sans',sans-serif; font-size:46px; font-weight:800; letter-spacing:-1.5px; margin:8px 0 4px; }
+      .tp-results-sub { font-size:13px; color:var(--text2); margin-bottom:22px; }
+    `;
+    document.head.appendChild(st);
+  }
+
+  // ---------- deck intro (per tab) ----------
+  function renderIntro(tab) {
     tabFlash.classList.toggle('active', tab === 'flash');
     tabMC.classList.toggle('active', tab === 'multiple');
 
-    if (tab === 'flash') {
-      content.innerHTML = `
-        <div class="carrier-card" style="max-width:440px;">
-          <div class="carrier-card-head" style="justify-content:space-between; align-items:flex-start;">
-            <div class="carrier-avatar" style="width:44px;height:44px;border-radius:12px;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:20px;height:20px;"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
-            </div>
-            <span class="queue-pill">197 cards</span>
-          </div>
-          <div style="font-size:17px; font-weight:700; color:var(--text); margin:14px 0 16px;">Life Insurance Test Flash Cards</div>
-          <div style="display:flex; align-items:center; justify-content:space-between;">
-            <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--text3);">Study Deck</span>
-            <button class="open-link" id="startFlashBtn" style="background:none; border:none; cursor:pointer; font-family:inherit; display:flex; align-items:center; gap:4px;">
-              Start
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-            </button>
-          </div>
-        </div>
-      `;
-      document.getElementById('startFlashBtn').addEventListener('click', () => showToast('Flash card study mode is coming soon.'));
-    } else {
-      content.innerHTML = `
-        <div class="carrier-card" style="max-width:440px;">
-          <div class="carrier-card-head" style="justify-content:space-between; align-items:flex-start;">
-            <div class="carrier-avatar" style="width:44px;height:44px;border-radius:12px;">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:20px;height:20px;"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
-            </div>
-            <span class="queue-pill">197 questions</span>
-          </div>
-          <div style="font-size:17px; font-weight:700; color:var(--text); margin:14px 0 16px;">Life Insurance Pre-Test</div>
-          <div style="display:flex; align-items:center; justify-content:space-between;">
-            <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--text3);">Practice Test</span>
-            <button class="open-link" id="startMCBtn" style="background:none; border:none; cursor:pointer; font-family:inherit; display:flex; align-items:center; gap:4px;">
-              Start
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
-            </button>
-          </div>
-        </div>
-      `;
-      document.getElementById('startMCBtn').addEventListener('click', () => showToast('Practice test mode is coming soon.'));
+    if (!BANK.length) {
+      content.innerHTML = `<div class="tp-results"><div class="tp-results-sub" style="margin:0;">The question bank hasn't loaded. Make sure test-questions.js is deployed.</div></div>`;
+      return;
     }
+
+    const isFlash = tab === 'flash';
+    const icon = isFlash
+      ? '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>'
+      : '<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>';
+    content.innerHTML = `
+      <div class="carrier-card" style="max-width:440px;">
+        <div class="carrier-card-head" style="justify-content:space-between; align-items:flex-start;">
+          <div class="carrier-avatar" style="width:44px;height:44px;border-radius:12px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:20px;height:20px;">${icon}</svg>
+          </div>
+          <span class="queue-pill">${BANK.length} ${isFlash ? 'cards' : 'questions'}</span>
+        </div>
+        <div style="font-size:17px; font-weight:700; color:var(--text); margin:14px 0 6px;">${isFlash ? 'Life Insurance Flash Cards' : 'Life Insurance Practice Test'}</div>
+        <div style="font-size:12.5px; color:var(--text2); margin-bottom:16px;">Michigan Life Producer (PSI) exam prep. Questions are shuffled each run.</div>
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <span style="font-size:11px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; color:var(--text3);">${isFlash ? 'Study Deck' : 'Practice Test'}</span>
+          <button class="btn-outline" id="tpStartBtn">
+            Start
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          </button>
+        </div>
+      </div>
+    `;
+    document.getElementById('tpStartBtn').addEventListener('click', () => isFlash ? startFlashcards() : startQuiz());
   }
 
-  tabFlash.addEventListener('click', () => renderTestTab('flash'));
-  tabMC.addEventListener('click', () => renderTestTab('multiple'));
-  renderTestTab('flash');
+  // ---------- flashcard player ----------
+  function startFlashcards() {
+    let order = shuffled(BANK);
+    let i = 0;
+    let flipped = false;
+
+    function draw() {
+      const card = order[i];
+      content.innerHTML = `
+        <div class="tp-player">
+          <div class="tp-toolbar">
+            <button class="btn-outline" id="tpExit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="m15 18-6-6 6-6"/></svg> Back</button>
+            <span class="tp-progress">${i + 1} / ${order.length}</span>
+            <button class="btn-outline" id="tpShuffle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="M4 4l5 5"/></svg> Shuffle</button>
+          </div>
+          <div class="tp-flashcard${flipped ? ' flipped' : ''}" id="tpCard">
+            <div class="tp-fc-inner">
+              <div class="tp-face tp-front">
+                <span class="tp-face-label">Question</span>
+                <div class="tp-face-text">${esc(card.q)}</div>
+                <span class="tp-flip-hint">Click to reveal answer</span>
+              </div>
+              <div class="tp-face tp-back">
+                <span class="tp-face-label">Answer</span>
+                <div class="tp-face-text">${esc(card.a)}</div>
+                <span class="tp-flip-hint">Click to flip back</span>
+              </div>
+            </div>
+          </div>
+          <div class="tp-nav">
+            <button class="btn-outline" id="tpPrev">Prev</button>
+            <button class="btn-outline" id="tpNext">Next</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('tpCard').addEventListener('click', () => { flipped = !flipped; document.getElementById('tpCard').classList.toggle('flipped', flipped); });
+      document.getElementById('tpPrev').addEventListener('click', () => { i = (i - 1 + order.length) % order.length; flipped = false; draw(); });
+      document.getElementById('tpNext').addEventListener('click', () => { i = (i + 1) % order.length; flipped = false; draw(); });
+      document.getElementById('tpShuffle').addEventListener('click', () => { order = shuffled(BANK); i = 0; flipped = false; draw(); showToast('Deck shuffled'); });
+      document.getElementById('tpExit').addEventListener('click', () => renderIntro('flash'));
+    }
+    draw();
+  }
+
+  // ---------- multiple-choice quiz ----------
+  function buildOptions(card) {
+    // 3 distractors: random OTHER answers, distinct from the correct one.
+    const pool = shuffled(BANK.filter((c) => c.a.toLowerCase() !== card.a.toLowerCase()));
+    const distractors = [];
+    const seen = new Set([card.a.toLowerCase()]);
+    for (const c of pool) {
+      const key = c.a.toLowerCase();
+      if (!seen.has(key)) { seen.add(key); distractors.push(c.a); }
+      if (distractors.length === 3) break;
+    }
+    return shuffled([card.a, ...distractors]);
+  }
+
+  function startQuiz() {
+    const order = shuffled(BANK);
+    let i = 0, correct = 0, answered = false;
+    const KEYS = ['A', 'B', 'C', 'D'];
+
+    function drawResults() {
+      const pct = Math.round((correct / order.length) * 100);
+      content.innerHTML = `
+        <div class="tp-results">
+          <div class="tp-face-label" style="position:static;">Practice test complete</div>
+          <div class="tp-results-score" style="color:${pct >= 70 ? 'var(--success)' : 'var(--warning)'};">${pct}%</div>
+          <div class="tp-results-sub">${correct} of ${order.length} correct${pct >= 70 ? ' — passing range 👍' : ' — keep studying'}</div>
+          <div class="tp-nav">
+            <button class="btn-outline" id="tpRestart">Restart</button>
+            <button class="btn-outline" id="tpBackIntro">Back to menu</button>
+          </div>
+        </div>
+      `;
+      document.getElementById('tpRestart').addEventListener('click', startQuiz);
+      document.getElementById('tpBackIntro').addEventListener('click', () => renderIntro('multiple'));
+    }
+
+    function draw() {
+      if (i >= order.length) { drawResults(); return; }
+      const card = order[i];
+      const options = buildOptions(card);
+      answered = false;
+      content.innerHTML = `
+        <div class="tp-player">
+          <div class="tp-toolbar">
+            <button class="btn-outline" id="tpExit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="m15 18-6-6 6-6"/></svg> Back</button>
+            <span class="tp-progress">Question ${i + 1} / ${order.length}</span>
+            <span class="tp-progress">Score: ${correct}/${i}</span>
+          </div>
+          <div class="tp-question">${esc(card.q)}</div>
+          <div class="tp-options" id="tpOptions">
+            ${options.map((opt, k) => `<button class="tp-option" data-opt="${esc(opt)}"><span class="tp-opt-key">${KEYS[k]}</span><span>${esc(opt)}</span></button>`).join('')}
+          </div>
+          <div class="tp-feedback" id="tpFeedback"></div>
+          <div class="tp-nav">
+            <button class="btn-outline" id="tpNextQ" style="display:none;">${i + 1 === order.length ? 'See results' : 'Next question'}</button>
+          </div>
+        </div>
+      `;
+      const optionEls = Array.from(document.querySelectorAll('#tpOptions .tp-option'));
+      optionEls.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          if (answered) return;
+          answered = true;
+          const chosen = btn.getAttribute('data-opt');
+          const isRight = chosen.toLowerCase() === card.a.toLowerCase();
+          if (isRight) correct++;
+          optionEls.forEach((b) => {
+            b.disabled = true;
+            const v = b.getAttribute('data-opt').toLowerCase();
+            if (v === card.a.toLowerCase()) b.classList.add('correct');
+            else if (b === btn) b.classList.add('incorrect');
+          });
+          const fb = document.getElementById('tpFeedback');
+          fb.textContent = isRight ? 'Correct' : 'Incorrect — the answer is highlighted above.';
+          fb.className = 'tp-feedback ' + (isRight ? 'ok' : 'no');
+          document.getElementById('tpNextQ').style.display = '';
+        });
+      });
+      document.getElementById('tpNextQ').addEventListener('click', () => { i++; draw(); });
+      document.getElementById('tpExit').addEventListener('click', () => renderIntro('multiple'));
+    }
+    draw();
+  }
+
+  tabFlash.addEventListener('click', () => renderIntro('flash'));
+  tabMC.addEventListener('click', () => renderIntro('multiple'));
+  renderIntro('flash');
 })();
 
 /* ---- DATA COLLECTION TOOLKIT ---- */
